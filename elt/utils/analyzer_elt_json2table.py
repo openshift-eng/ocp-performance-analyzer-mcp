@@ -138,6 +138,16 @@ class GenericELT(utilityELT):
             logger.warning(f"Could not import node_usage handler: {e}")
 
         try:
+            from ..node.analyzer_elt_node_health import nodeHealthELT
+            register_metric_handler(
+                'node_health',
+                nodeHealthELT,
+                self._is_node_health
+            )
+        except ImportError as e:
+            logger.warning(f"Could not import node_health handler: {e}")
+
+        try:
             from ..pods.analyzer_elt_pods_usage import podsUsageELT
             register_metric_handler(
                 'pods_usage',
@@ -434,15 +444,36 @@ class GenericELT(utilityELT):
         return False
 
     @staticmethod
+    def _is_node_health(data: Dict[str, Any]) -> bool:
+        """Identify node health data (PLEG metrics)"""
+        if 'category' in data and data.get('category') == 'node_health':
+            return True
+
+        # Check nested structure
+        if 'data' in data and isinstance(data.get('data'), dict):
+            inner = data['data']
+            if 'category' in inner and inner.get('category') == 'node_health':
+                return True
+            # Also check for PLEG metric presence
+            if 'node_groups' in inner:
+                for group_data in inner.get('node_groups', {}).values():
+                    if isinstance(group_data, dict):
+                        metrics = group_data.get('metrics', {})
+                        if 'p99_kubelet_pleg_relist_duration' in metrics:
+                            return True
+
+        return False
+
+    @staticmethod
     def _is_node_usage(data: Dict[str, Any]) -> bool:
         """Identify node usage data"""
         # First, exclude network_l1 data
         if 'category' in data and data.get('category') == 'network_l1':
             return False
-        
+
         if 'category' in data and data.get('category') == 'node_usage':
             return True
-        
+
         # Check nested structure
         if 'data' in data and isinstance(data.get('data'), dict):
             inner = data['data']
@@ -1091,7 +1122,10 @@ class GenericELT(utilityELT):
                 summary_method = 'summarize_cluster_status'
             elif data_type == 'node_usage':
                 structured_data = handler.extract_node_usage(actual_data) if hasattr(handler, 'extract_node_usage') else {}
-                summary_method = 'summarize_node_usage' 
+                summary_method = 'summarize_node_usage'
+            elif data_type == 'node_health':
+                structured_data = handler.extract_node_health(actual_data) if hasattr(handler, 'extract_node_health') else {}
+                summary_method = 'summarize_node_health'
             elif data_type == 'pods_usage':
                 structured_data = handler.extract_pods_usage(actual_data) if hasattr(handler, 'extract_pods_usage') else {}
                 summary_method = 'summarize_pods_usage'
