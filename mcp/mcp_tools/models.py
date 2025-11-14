@@ -267,6 +267,16 @@ class ETCDNodeUsageResponse(MCPBaseModel):
     duration: str
 
 
+class NodeHealthResponse(MCPBaseModel):
+    """Node health response for PLEG and kubelet metrics"""
+    status: str
+    data: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+    timestamp: str
+    category: str = Field(default="node_health")
+    duration: str
+
+
 class ETCDGeneralInfoResponse(MCPBaseModel):
     """etcd general information response"""
     status: str

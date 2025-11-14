@@ -35,5 +35,11 @@ metrics:
     description: "memory cache buffer usage per nodes"
     category: node_usage
 
-
+  #Node Health
+  - name: p99_kubelet_pleg_relist_duration
+    title: "p99_kubelet_pleg_relist_duration"
+    expr: 'histogram_quantile(0.99, sum(rate(kubelet_pleg_relist_duration_seconds_bucket{node=~"$node_name"}[5m])) by (node, le))'
+    unit: second
+    description: "99th-percentile PLEG relist latency in seconds"
+    category: node_health
 
